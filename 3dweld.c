@@ -191,6 +191,8 @@ Application includes
 \*--------------------------------------------------------------------*/
 #include "TestError.h"
 #include <time.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 /*--------------------------------------------------------------------*\
 Application global/external data
@@ -209,7 +211,7 @@ static double identity_matrix[4][4] = { {1.0, 0.0, 0.0, 0.0},
 					
 int tk_3dweld (ProAppData arg_1, int arg_2);
 void d3weld() ;
-void NewDwgM()   ;
+void NewDwgM();
 void NewDwgI()   ;
 void NewDwgS()   ;
 void NewDwgT()   ;
@@ -2051,7 +2053,7 @@ str_type_table[] =
     };
 
 /*====================================================================*\
-  Function : ProUtilGetProType
+  Function : 	
   Purpose  : looks up the type for a specified string
 \*====================================================================*/
 ProType ProUtilGetProType( char *type_str )
@@ -2767,9 +2769,14 @@ ProError ProDemoGeneralCsysCreate()
 FUNCTION: UserAssembleByDatums
 PURPOSE:  Assemble a component by aligning named datums.	
 \*=====================================================================*/
-ProError UserAssembleByDatums (ProAssembly asm_model, ProSolid comp_model)
+ProError UserAssembleByDatums (ProAssembly asm_model)
 {
+    char temp_name[100];
+	char newfile_name[100];
+	
 	ProError status;
+	ProName name;
+	ProSolid comp_model;
 	ProName asm_datums [3];
 	ProName comp_datums [3];
 	ProMatrix identity_matrix = {{ 1.0, 0.0, 0.0, 0.0 }, 
@@ -2785,175 +2792,116 @@ ProError UserAssembleByDatums (ProAssembly asm_model, ProSolid comp_model)
 	ProSelection asm_sel, comp_sel;
 	ProAsmcomppath comp_path;
 	ProIdTable c_id_table;
+		
 	FILE *fp;
 	fp=fopen("DrawingRepTabImp.txt","w+");
 	c_id_table [0] = -1;
-	
-	if (1==0)
-	{
 
-	/*-----------------------------------------------------------------*\
-		Set up the arrays of datum names
-    \*-----------------------------------------------------------------*/
-	ProStringToWstring (asm_datums [0], "A-FRONT"); //ASM_D_FRONT
-	ProStringToWstring (asm_datums [1], "A-TOP"); //ASM_D_TOP
-	ProStringToWstring (asm_datums [2], "A-RIGHT"); //ASM_D_RIGHT
-
-	ProStringToWstring (comp_datums [0], "FRONT"); //COMP_D_FRONT
-	ProStringToWstring (comp_datums [1], "TOP"); //COMP_D_TOP
-	ProStringToWstring (comp_datums [2], "RIGHT"); //COMP_D_RIGHT
-
-	/*-----------------------------------------------------------------*\
-		Package the component initially
-    \*-----------------------------------------------------------------*/
-	ProAsmcompAssemble (asm_model, comp_model, identity_matrix, &asmcomp);
-	/*-----------------------------------------------------------------*\
-		Prepare the constraints array
-    \*-----------------------------------------------------------------*/
-	ProArrayAlloc (0, sizeof (ProAsmcompconstraint), 1, (ProArray*)&constraints);
-
-	for (i = 30; i < 3; i++)
-	{
-		/*-----------------------------------------------------------------*\
-			Find the assembly datum 
-		\*-----------------------------------------------------------------*/
-		status = ProModelitemByNameInit (asm_model, PRO_SURFACE, asm_datums [i], &asm_datum);
-		if (status != PRO_TK_NO_ERROR) 
-		{
-			interact_flag = PRO_B_TRUE;
-			continue;
-		}
-		ProTKPrintf ("Item type = %d, PRO_SURFACE = %d\n", asm_datum.type, PRO_SURFACE);
-		fflush (stdout);
-		fprintf(fp,"Item type = %d, PRO_SURFACE = %d\n", asm_datum.type, PRO_SURFACE);
-
-		/*-----------------------------------------------------------------*\
-			Find the component datum
-		\*-----------------------------------------------------------------*/
-		status = ProModelitemByNameInit (comp_model, PRO_SURFACE, comp_datums [i], &comp_datum);
-		if (status != PRO_TK_NO_ERROR) 
-		{
-			interact_flag = PRO_B_TRUE;
-			continue;
-		}
-		ProTKPrintf ("Item type = %d, PRO_SURFACE = %d\n", comp_datum.type, PRO_SURFACE);
-		fflush (stdout);
-		fprintf(fp,"Item type = %d, PRO_SURFACE = %d\n", comp_datum.type, PRO_SURFACE);
-
-		/*-----------------------------------------------------------------*\
-			For the assembly reference, initialize a component path.
-			This is necessary even if the reference geometry is in the assembly.
-		\*-----------------------------------------------------------------*/
-		status = ProAsmcomppathInit (asm_model, c_id_table, 0, &comp_path);
-		ERROR_CHECK ("ProAsmcomppathInit()", "UserAssembleByDatums", status);
-
-		/*-----------------------------------------------------------------*\
-			Allocate the references
-		\*-----------------------------------------------------------------*/
-		status = ProSelectionAlloc (&comp_path, &asm_datum, &asm_sel);
-		status = ProSelectionAlloc (NULL, &comp_datum, &comp_sel);
-
-		/*-----------------------------------------------------------------*\
-			Allocate and fill the constraint.
-		\*-----------------------------------------------------------------*/
-		status = ProAsmcompconstraintAlloc (&constraint);
-
-		status = ProAsmcompconstraintTypeSet (constraint, PRO_ASM_ALIGN);
-
-		status = ProAsmcompconstraintAsmreferenceSet (constraint, asm_sel, PRO_DATUM_SIDE_YELLOW);
-			
-		status = ProAsmcompconstraintCompreferenceSet (constraint, comp_sel, PRO_DATUM_SIDE_YELLOW);
-
-		status = ProArrayObjectAdd ((ProArray*)&constraints, -1, 1, &constraint);
-
-	}	
-
-	/*-----------------------------------------------------------------*\
-		Set the assembly component constraints and regenerate the assembly.
-    \*-----------------------------------------------------------------*/
-	status = ProAsmcompConstraintsSet (NULL, &asmcomp, constraints);
-	ERROR_CHECK ("ProAsmcompConstraintsSet()", "UserAssembleByDatums", status);
-
-	ProSolidRegenerate (asmcomp.owner, PRO_REGEN_ALLOW_CONFIRM);
-
-	/*-----------------------------------------------------------------*\
-		If any of the expect datums was not found, prompt the user to constrain
-		the new component.
-    \*-----------------------------------------------------------------*/
-	if (interact_flag)
-	{
-		ProMessageDisplay (MSGFIL, 
-			"USER Unable to locate all standard datum references.  New component is packaged.");
-
-		ProAsmcompConstrRedefUI (&asmcomp);
-	}
-	
-	}
-	
-	
-	
 	if (1==1)
 	{
-		        ProSelection asmCsysSel;
-                ProSelection compCsysSel;
-				
-                ProModelitem asmCsys;
-                ProModelitem compCsys;
-				
-				ProAsmcomp asmcomp_a[3];
-				ProName asmCsysName[3];
-
-				ProStringToWstring(asmCsysName[0], "WELD_CSYS_01");
-				ProStringToWstring(asmCsysName[1], "WELD_CSYS_02");
-				ProStringToWstring(asmCsysName[2], "WELD_CSYS_03");
-				
-				//CreateDefCsys();
-				ProDemoGeneralCsysCreate();
-				//return;//check_selection
-				                
-                status = ProModelitemByNameInit(comp_model, PRO_CSYS, L"WELD-CSYS", &compCsys);
-                if (status != PRO_TK_NO_ERROR) 
-                {
-                        return PRO_TK_GENERAL_ERROR;
-                }
-				
-			for (i = 0; i < 3; i++)
-			{
-				ProAsmcompconstraint* constraints;
-                ProAsmcompconstraint constraint;				
-                status = ProArrayAlloc(0, sizeof(ProAsmcompconstraint), 1, (ProArray*)&constraints);
+		ProSelection asmCsysSel;
+        ProSelection compCsysSel;
 		
-				status = ProModelitemByNameInit(asm_model, PRO_CSYS, asmCsysName[i], &asmCsys);
-                if (status != PRO_TK_NO_ERROR) 
-                {
-                        return PRO_TK_GENERAL_ERROR;
-                }
-
-                // 
-                status = ProAsmcomppathInit(asm_model, c_id_table, 0, &comp_path);				
-				
-                status = ProSelectionAlloc(&comp_path, &asmCsys, &asmCsysSel);
-                status = ProSelectionAlloc(NULL, &compCsys, &compCsysSel);
-
-                status = ProAsmcompconstraintAlloc(&constraint);
-                status = ProAsmcompconstraintTypeSet(constraint, PRO_ASM_CSYS);
-                status = ProAsmcompconstraintAsmreferenceSet(constraint, asmCsysSel, PRO_DATUM_SIDE_YELLOW);
-                status = ProAsmcompconstraintCompreferenceSet(constraint, compCsysSel, PRO_DATUM_SIDE_YELLOW);
-                status = ProArrayObjectAdd((ProArray*)&constraints, -1, 1, &constraint);	
-
-                status = ProAsmcompAssemble(asm_model, comp_model, identity_matrix, &asmcomp_a[i]);
-                status = ProAsmcompConstraintsSet(NULL, &asmcomp_a[i], constraints);
-                status = ProSolidRegenerate((ProSolid)asmcomp_a[i].owner, PRO_REGEN_NO_FLAGS);
-				
-				ProArrayFree((ProArray*)&constraints);
-			}
+        ProModelitem asmCsys;
+        ProModelitem compCsys;
+		
+		ProAsmcompconstraint* constraints;
+        ProAsmcompconstraint constraint;				
+		
+		ProAsmcomp asmcomp_a[3];
+		ProName asmCsysName[3];
+	
+		ProStringToWstring(asmCsysName[0], "WELD_CSYS_01");
+		ProStringToWstring(asmCsysName[1], "WELD_CSYS_02");
+		ProStringToWstring(asmCsysName[2], "WELD_CSYS_03");
+		
+		for (i = 0; i < 3; i++) {		
+			// Creation new template files
+	        sprintf(newfile_name, "3d_weld_template_00%d.prt.1", (i + 1));
+	        copy_tmplt("C:\\temps\\3d_weld_template_000.prt.1", newfile_name);
+			sprintf(temp_name, "%s%d", "3d_weld_template_00", (i + 1));		
+		    ProStringToWstring(name, temp_name); 			
+		    status = ProMdlRetrieve(name,PRO_MDL_PART,&comp_model);
+		    
+		    if (status != PRO_TK_NO_ERROR)
+		    	return status;
+		    
+		    //CreateDefCsys();
+		    ProDemoGeneralCsysCreate();
+		    //return;//check_selection
+		                    
+            status = ProModelitemByNameInit(comp_model, PRO_CSYS, L"WELD-CSYS", &compCsys);
+            if (status != PRO_TK_NO_ERROR) 
+            {
+		    	return PRO_TK_GENERAL_ERROR;
+            }
+			
+            status = ProArrayAlloc(0, sizeof(ProAsmcompconstraint), 1, (ProArray*)&constraints);
+		
+			status = ProModelitemByNameInit(asm_model, PRO_CSYS, asmCsysName[i], &asmCsys);
+            if (status != PRO_TK_NO_ERROR) {
+               return PRO_TK_GENERAL_ERROR;
+            }
+        
+           status = ProAsmcomppathInit(asm_model, c_id_table, 0, &comp_path);				
+		
+           status = ProSelectionAlloc(&comp_path, &asmCsys, &asmCsysSel);
+           status = ProSelectionAlloc(NULL, &compCsys, &compCsysSel);
+        
+           status = ProAsmcompconstraintAlloc(&constraint);
+           status = ProAsmcompconstraintTypeSet(constraint, PRO_ASM_CSYS);
+           status = ProAsmcompconstraintAsmreferenceSet(constraint, asmCsysSel, PRO_DATUM_SIDE_YELLOW);
+           status = ProAsmcompconstraintCompreferenceSet(constraint, compCsysSel, PRO_DATUM_SIDE_YELLOW);
+           status = ProArrayObjectAdd((ProArray*)&constraints, -1, 1, &constraint);	
+           
+		   ProStringToWstring (name, temp_name);  	
+		   status = ProMdlRetrieve(name,PRO_MDL_PART,&comp_model);		   
+           status = ProAsmcompAssemble(asm_model, comp_model, identity_matrix, &asmcomp_a[i]);		   
+           status = ProAsmcompConstraintsSet(NULL, &asmcomp_a[i], constraints);
+           status = ProSolidRegenerate((ProSolid)asmcomp_a[i].owner, PRO_REGEN_NO_FLAGS);
+			
+		   ProArrayFree((ProArray*)&constraints);
+		}
 	}
 	
 	fclose (fp);
 
 	return (PRO_TK_NO_ERROR);	
-	
 }
+
+// Copies file is taken from https://www.codingunit.com/c-tutorial-copying-a-file-in-c
+int copy_tmplt(char old_filename[100], char new_filename[100]) {
+	FILE  *ptr_old, *ptr_new;
+	errno_t err = 0, err1 = 0;
+	int  a;
+    
+	err = fopen_s(&ptr_old, old_filename, "rb");
+	err1 = fopen_s(&ptr_new, new_filename, "wb");
+    
+	if(err != 0)
+		return  -1;
+    
+	if(err1 != 0)
+	{
+		fclose(ptr_old);
+		return  -1;
+	}
+    
+	while(1)
+	{
+		a  =  fgetc(ptr_old);
+    
+		if(!feof(ptr_old))
+			fputc(a, ptr_new);
+		else
+			break;
+	}
+    
+	fclose(ptr_new);
+	fclose(ptr_old);
+	return  0;
+}
+
 /*=====================================================================*\
 FUNCTION: UserAssemble
 PURPOSE:  Menu action to assemble a component
@@ -2963,26 +2911,27 @@ ProError UserAssemble ()
 	ProAssembly top_level_asm;
 	ProSolid comp_model;
 	ProError status;
-	ProName       name;   
-
-	ProMdlCurrentGet ((ProMdl*)&top_level_asm);
-
-	//status = UserOpenComponent (&comp_model);
-	ProStringToWstring (name, "3d_weld_template");  
-	status = ProMdlRetrieve(name,PRO_MDL_PART,&comp_model);
+	ProName  name;  
+		    	
+	ProMdlCurrentGet ((ProMdl*)&top_level_asm);    
+	//status = UserOpenComponent (&comp_model);    	    
+	ProStringToWstring (name, "3d_weld_template_000");  
 	
+	//status = ProMdlRetrieve(name,PRO_MDL_PART,&comp_model);
+	//
+	//if (status != PRO_TK_NO_ERROR)
+	//	return status;
+    
+	//UserAssembleByDatums(top_level_asm, comp_model);	
+	UserAssembleByDatums(top_level_asm);
 	
-	if (status != PRO_TK_NO_ERROR)
-		return status;
-
-	UserAssembleByDatums (top_level_asm, comp_model);
-
 	ProWindowRepaint (-1);
-
+    
 	ProTreetoolRefresh (top_level_asm);
-
+    
 	return PRO_TK_NO_ERROR;
 }
+
 void d3weld ()
 {
 	UserAssemble ();
