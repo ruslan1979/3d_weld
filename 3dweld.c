@@ -2224,10 +2224,10 @@ ProError ProDemoGeneralCsysCreate()
   ProElement pro_e_csys_orientmove_move_val;
   ProElement pro_e_csys_orient_by_method;
   
-  ProName 	wide_string;
+  ProName wide_string;
   ProValueData 	value_data;
   ProSelection * p_select;
-  int 		n_select;
+  int n_select;
   
   ProGeomitem asm_csys, comp_csys;
   ProFeature working_csys_feat;
@@ -2236,11 +2236,10 @@ ProError ProDemoGeneralCsysCreate()
   ProAsmcomppath path;   
   ProName csys_name;
   
-    ProSelection ref_item_csy;
-    ProModelitem mdl_itm_top;
-
+  ProSelection ref_item_csy;
+  ProModelitem mdl_itm_top;
   
-  ProBoolean 	is_interactive = PRO_B_TRUE;
+  ProBoolean is_interactive = PRO_B_TRUE;
   
   ProStringToWstring ( message_file, "utilities.txt" ); 
   
@@ -2341,18 +2340,18 @@ ProError ProDemoGeneralCsysCreate()
   //  fprintf(fpG,"asm_csys.id %d\n", asm_csys.id);
 //   status = ProSelectionAlloc (&path, &asm_csys, &csys_sel);
 
-	ProStringToWstring (csys_name, "ISOGEN");
-    status=ProModelitemByNameInit(model,PRO_CSYS,csys_name,&mdl_itm_top);
+  ProStringToWstring (csys_name, "ISOGEN");
+  status=ProModelitemByNameInit(model,PRO_CSYS,csys_name,&mdl_itm_top);
   fprintf(fpG,"status = ProModelitemByNameInit %d\n", status);
-    status=ProSelectionAlloc(NULL,&mdl_itm_top,&ref_item_csy);
-
+  status=ProSelectionAlloc(NULL,&mdl_itm_top,&ref_item_csy);
+  
   fprintf(fpG,"status = ProSelectionAlloc %d\n", status);
-  //ProSelectionSet(csys_sel, NULL, &working_csys_feat);
+  ////ProSelectionSet(csys_sel, NULL, &working_csys_feat);
   ProSelectionHighlight(csys_sel,PRO_COLOR_SELECTED); //should be light green   PRO_COLOR_EDGE_HIGHLIGHT);//PRO_COLOR_SELECTED); //should be light green
   if (csys_sel!=NULL) 
-	  fprintf(fpG,"csys_sel!=NULL");
+      fprintf(fpG,"csys_sel!=NULL");
   else
-	  fprintf(fpG,"csys_sel==NULL");
+      fprintf(fpG,"csys_sel==NULL");
   fclose(fpG);
   
   //return;//check_selection
@@ -2369,16 +2368,14 @@ ProError ProDemoGeneralCsysCreate()
   //C_LOG( " ProValueDataSet" );
   status = ProElementValueSet ( pro_e_csys_origin_constr_ref, value );
   //C_LOG( " ProElementValueSet" );
-  status = ProElemtreeElementAdd ( pro_e_csys_origin_constr, NULL, 
-		pro_e_csys_origin_constr_ref );
+  status = ProElemtreeElementAdd ( pro_e_csys_origin_constr, NULL, pro_e_csys_origin_constr_ref );
   //C_LOG( " ProElemtreeElementAdd" );
   
   /*---------------------------------------------------------------*\
     Populating  element PRO_E_CSYS_OFFSET_TYPE
   \*---------------------------------------------------------------*/
   //C_PRINT( " *** Processing Element PRO_E_CSYS_OFFSET_TYPE *** " );
-  status = ProElementAlloc ( PRO_E_CSYS_OFFSET_TYPE, 
-		&pro_e_csys_offset_type );
+  status = ProElementAlloc ( PRO_E_CSYS_OFFSET_TYPE, &pro_e_csys_offset_type );
   //C_LOG( " ProElementAlloc " );
   value_data.type = PRO_VALUE_TYPE_INT;
   value_data.v.i = PRO_CSYS_OFFSET_CARTESIAN; /* 0 */ 
@@ -2388,19 +2385,16 @@ ProError ProDemoGeneralCsysCreate()
   //C_LOG( " ProValueDataSet" );
   status = ProElementValueSet ( pro_e_csys_offset_type, value );
   //C_LOG( " ProElementValueSet" );
-  status = ProElemtreeElementAdd ( pro_e_feature_tree, NULL, 
-		pro_e_csys_offset_type );
+  status = ProElemtreeElementAdd ( pro_e_feature_tree, NULL, pro_e_csys_offset_type );
   //C_LOG( " ProElemtreeElementAdd" );
   
   /*---------------------------------------------------------------*\
     Populating  element PRO_E_CSYS_ORIENTMOVES
   \*---------------------------------------------------------------*/
   //C_PRINT( " *** Processing Element PRO_E_CSYS_ORIENTMOVES *** " );
-  status = ProElementAlloc ( PRO_E_CSYS_ORIENTMOVES, 
-		&pro_e_csys_orientmoves );
+  status = ProElementAlloc ( PRO_E_CSYS_ORIENTMOVES, &pro_e_csys_orientmoves );
   //C_LOG( " ProElementAlloc" );
-  status = ProElemtreeElementAdd ( pro_e_feature_tree, NULL, 
-		pro_e_csys_orientmoves  );
+  status = ProElemtreeElementAdd ( pro_e_feature_tree, NULL, pro_e_csys_orientmoves  );
   //C_LOG( " ProElemtreeElementAdd" );
   
   /*---------------------------------------------------------------*\
@@ -2408,11 +2402,9 @@ ProError ProDemoGeneralCsysCreate()
 			-> PRO_E_CSYS_ORIENTMOVE
   \*---------------------------------------------------------------*/
   //C_PRINT( " *** Processing Element PRO_E_CSYS_ORIENTMOVE *** " );
-  status = ProElementAlloc ( PRO_E_CSYS_ORIENTMOVE, 
-		&pro_e_csys_orientmove );
+  status = ProElementAlloc ( PRO_E_CSYS_ORIENTMOVE, &pro_e_csys_orientmove );
   //C_LOG( " ProElementAlloc" );
-  status = ProElemtreeElementAdd ( pro_e_csys_orientmoves, NULL, 
-		pro_e_csys_orientmove  );
+  status = ProElemtreeElementAdd ( pro_e_csys_orientmoves, NULL, pro_e_csys_orientmove  );
   //C_LOG( " ProElemtreeElementAdd" );
   
   /*---------------------------------------------------------------*\
@@ -2421,8 +2413,7 @@ ProError ProDemoGeneralCsysCreate()
 			   -> PRO_E_CSYS_ORIENTMOVE_MOVE_TYPE
   \*---------------------------------------------------------------*/
   //C_PRINT( " *** Processing Element PRO_E_CSYS_ORIENTMOVE_MOVE_TYPE *** " );
-  status = ProElementAlloc ( PRO_E_CSYS_ORIENTMOVE_MOVE_TYPE, 
-		&pro_e_csys_orientmove_move_type );
+  status = ProElementAlloc ( PRO_E_CSYS_ORIENTMOVE_MOVE_TYPE, &pro_e_csys_orientmove_move_type );
   //C_LOG( " ProElementAlloc " );
   value_data.type = PRO_VALUE_TYPE_INT;
   value_data.v.i = PRO_CSYS_ORIENTMOVE_MOVE_OPT_ROT_X; /* 3 */ 
@@ -2432,8 +2423,7 @@ ProError ProDemoGeneralCsysCreate()
   //C_LOG( " ProValueDataSet" );
   status = ProElementValueSet ( pro_e_csys_orientmove_move_type, value );
   //C_LOG( " ProElementValueSet" );
-  status = ProElemtreeElementAdd ( pro_e_csys_orientmove, NULL, 
-		pro_e_csys_orientmove_move_type );
+  status = ProElemtreeElementAdd ( pro_e_csys_orientmove, NULL, pro_e_csys_orientmove_move_type );
   //C_LOG( " ProElemtreeElementAdd" );
   
   /*---------------------------------------------------------------*\
@@ -2442,8 +2432,7 @@ ProError ProDemoGeneralCsysCreate()
 			   -> PRO_E_CSYS_ORIENTMOVE_MOVE_VAL
   \*---------------------------------------------------------------*/
   //C_PRINT( " *** Processing Element PRO_E_CSYS_ORIENTMOVE_MOVE_VAL *** " );
-  status = ProElementAlloc ( PRO_E_CSYS_ORIENTMOVE_MOVE_VAL, 
-		&pro_e_csys_orientmove_move_val );
+  status = ProElementAlloc ( PRO_E_CSYS_ORIENTMOVE_MOVE_VAL, &pro_e_csys_orientmove_move_val );
   //C_LOG( " ProElementAlloc " );
   value_data.type = PRO_VALUE_TYPE_DOUBLE;
   value_data.v.d = 0.00000;
@@ -2453,8 +2442,7 @@ ProError ProDemoGeneralCsysCreate()
   //C_LOG( " ProValueDataSet" );
   status = ProElementValueSet ( pro_e_csys_orientmove_move_val, value );
   //C_LOG( " ProElementValueSet" );
-  status = ProElemtreeElementAdd ( pro_e_csys_orientmove, NULL, 
-		pro_e_csys_orientmove_move_val );
+  status = ProElemtreeElementAdd ( pro_e_csys_orientmove, NULL, pro_e_csys_orientmove_move_val );
   //C_LOG( " ProElemtreeElementAdd" );
   
   /*---------------------------------------------------------------*\
@@ -2462,11 +2450,9 @@ ProError ProDemoGeneralCsysCreate()
 			-> PRO_E_CSYS_ORIENTMOVE
   \*---------------------------------------------------------------*/
   //C_PRINT( " *** Processing Element PRO_E_CSYS_ORIENTMOVE *** " );
-  status = ProElementAlloc ( PRO_E_CSYS_ORIENTMOVE, 
-		&pro_e_csys_orientmove );
+  status = ProElementAlloc ( PRO_E_CSYS_ORIENTMOVE, &pro_e_csys_orientmove );
   //C_LOG( " ProElementAlloc" );
-  status = ProElemtreeElementAdd ( pro_e_csys_orientmoves, NULL, 
-		pro_e_csys_orientmove  );
+  status = ProElemtreeElementAdd ( pro_e_csys_orientmoves, NULL, pro_e_csys_orientmove  );
   //C_LOG( " ProElemtreeElementAdd" );
   
   /*---------------------------------------------------------------*\
@@ -2815,6 +2801,7 @@ ProError UserAssembleByDatums (ProAssembly asm_model)
 		ProStringToWstring(asmCsysName[1], "WELD_CSYS_02");
 		ProStringToWstring(asmCsysName[2], "WELD_CSYS_03");
 		
+		ProDemoGeneralCsysCreate();
 		for (i = 0; i < 3; i++) {		
 			// Creation new template files
 	        sprintf(newfile_name, "3d_weld_template_00%d.prt.1", (i + 1));
@@ -2827,7 +2814,7 @@ ProError UserAssembleByDatums (ProAssembly asm_model)
 		    	return status;
 		    
 		    //CreateDefCsys();
-		    ProDemoGeneralCsysCreate();
+		    //ProDemoGeneralCsysCreate();
 		    //return;//check_selection
 		                    
             status = ProModelitemByNameInit(comp_model, PRO_CSYS, L"WELD-CSYS", &compCsys);
@@ -2855,7 +2842,7 @@ ProError UserAssembleByDatums (ProAssembly asm_model)
            status = ProArrayObjectAdd((ProArray*)&constraints, -1, 1, &constraint);	
            
 		   ProStringToWstring (name, temp_name);  	
-		   status = ProMdlRetrieve(name,PRO_MDL_PART,&comp_model);		   
+		   //status = ProMdlRetrieve(name,PRO_MDL_PART,&comp_model);		   
            status = ProAsmcompAssemble(asm_model, comp_model, identity_matrix, &asmcomp_a[i]);		   
            status = ProAsmcompConstraintsSet(NULL, &asmcomp_a[i], constraints);
            status = ProSolidRegenerate((ProSolid)asmcomp_a[i].owner, PRO_REGEN_NO_FLAGS);
