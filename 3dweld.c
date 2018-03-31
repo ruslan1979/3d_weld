@@ -193,7 +193,10 @@ Application includes
 #include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
-
+#define ACTION_TYPE( v, f )	\
+    p_visit_action_type=v;	\
+    p_filter_action_type=f;
+	
 /*--------------------------------------------------------------------*\
 Application global/external data
 \*--------------------------------------------------------------------*/
@@ -202,6 +205,9 @@ Application global/external data
 #define LOG_FILE_NAME "drw_test.log"
 #define wLOG_FILE_NAME L"drw_test.log"
 #define MSGFIL L##"msg_ugasmcomp.txt"
+
+static const char *p_visit_action_type = "";
+static const char *p_filter_action_type = "";
 
 ProLine msgLine;
 static double identity_matrix[4][4] = { {1.0, 0.0, 0.0, 0.0},
@@ -2746,9 +2752,105 @@ ProError ProDemoGeneralCsysCreate()
   status = ProElementFree (&pro_e_feature_tree ); 
   //C_LOG (" ProElementFree"); 
   
-  ProSelectionHighlight(csys_sel,PRO_COLOR_SELECTED); //should be light green   PRO_COLOR_EDGE_HIGHLIGHT);//PRO_COLOR_SELECTED); //should be light green
+  //ProSelectionHighlight(csys_sel,PRO_COLOR_SELECTED); //should be light green   PRO_COLOR_EDGE_HIGHLIGHT);//PRO_COLOR_SELECTED); //should be light green
   
   return ( status );
+}
+
+
+// Searching axes
+//----------------------------- Inserted by Ruslan   ---------------------------
+/*=========================================================================*\
+    Function:	ProUtilCollect3ParamOpaqueVisitAction()
+    Purpose:	Add any opaque handle to the Collection
+    Returns:	PRO_TK_NO_ERROR - success;
+\*=========================================================================*/
+ProError ProUtilCollect3ParamOpaqueVisitAction(
+    void	    *p_object,	/* In:	The opaque handle being visited */
+    ProError	    status,	/* In:  The status returned by filter func */
+    ProAppData	    app_data)	/* In:	In fact it's ProArray** */
+{
+    return (ProUtilCollect2ParamDBVisitAction((void*)&p_object, app_data));
+}
+
+/*=========================================================================*\
+    Function:	ProUtilCollect2ParamDBVisitAction()
+    Purpose:	Add any object given by pointer to the Collection
+    Returns:	PRO_TK_NO_ERROR - success;
+\*=========================================================================*/
+ProError ProUtilCollect2ParamDBVisitAction(
+    void	    *p_object,	/* In:	The pointer to the object 
+					being visited */
+    ProAppData	    app_data)	/* In:	In fact it's ProArray** */
+{
+    ProError status; 
+    ProArray *p_array;
+    
+    p_array = (ProArray*)((void**)app_data)[0];
+
+    TEST_CALL_REPORT( p_visit_action_type, "ProUtilCollect2ParamDBVisitAction",
+	PRO_TK_NO_ERROR, 0 );
+
+    status = ProArrayObjectAdd(p_array, PRO_VALUE_UNUSED, 1, p_object );
+    return (status);
+}
+
+/*=========================================================================*\
+    Function:	ProUtilDefaultFilter()
+    Purpose:	filter function, just write TEST_CALL_REPORT for debug purposes
+    Returns:	PRO_TK_NO_ERROR - allow visit all objects;
+\*=========================================================================*/
+ProError ProUtilDefaultFilter()
+{
+    TEST_CALL_REPORT( p_filter_action_type, "ProUtilDefaultFilter", 
+        PRO_TK_NO_ERROR, 0 );
+
+    return (PRO_TK_NO_ERROR);
+}
+
+/*=========================================================================*\
+    Function:	ProUtilCollectSolidCsys()
+    Purpose:	Return a list of csys which belong to the solid
+    Returns:	PRO_TK_NO_ERROR - success;
+		PRO_TK_BAD_INPUTS - invalid parameters
+\*=========================================================================*/
+ProError ProUtilCollectSolidCsys( 
+    ProSolid	    p_solid,	    /* In:  The handle to the solid */
+    ProCsys	    **p_csys	    /* Out: ProArray with collected csys . 
+					    The function allocates memory 
+					    for this argument, but you must 
+					    free it. To free the memory, 
+					    call the function ProArrayFree()*/
+)
+{
+    ProError	    status;
+
+    if( p_csys != NULL )
+    {
+		status = ProArrayAlloc( 0, sizeof(ProCsys), 1, (ProArray*)p_csys );
+		TEST_CALL_REPORT("ProArrayAlloc()", "ProUtilCollectSolidCsys()",
+							status, status != PRO_TK_NO_ERROR);
+		if( status == PRO_TK_NO_ERROR )
+		{
+			ACTION_TYPE( "ProCsysVisitAction", "ProCsysFilterAction" );
+			status = ProSolidCsysVisit( p_solid, 
+			(ProCsysVisitAction)ProUtilCollect3ParamOpaqueVisitAction,
+					(ProCsysFilterAction)ProUtilDefaultFilter,
+					(ProAppData)&p_csys );
+			TEST_CALL_REPORT("ProSolidCsysVisit()", 
+			"ProUtilCollectSolidCsys()", status, 
+			status != PRO_TK_NO_ERROR && status != PRO_TK_E_NOT_FOUND);
+			if( status != PRO_TK_NO_ERROR )
+			{
+			ProArrayFree( (ProArray*)p_csys );
+			*p_csys = NULL;
+			}
+		}
+    }
+    else
+		status = PRO_TK_BAD_INPUTS;
+
+    return (status);
 }
 
 /*=====================================================================*\
@@ -2759,6 +2861,10 @@ ProError UserAssembleByDatums (ProAssembly asm_model)
 {
     char temp_name[100];
 	char newfile_name[100];
+	char wname[100];
+	
+	ProName csys_name;
+	ProName file_name;
 	
 	ProError status;
 	ProName name;
@@ -2772,12 +2878,21 @@ ProError UserAssembleByDatums (ProAssembly asm_model)
 	ProAsmcomp asmcomp;
 	ProAsmcompconstraint* constraints;
 	ProAsmcompconstraint constraint;
-	int i;
+	int i, n;	
+	ProCsys	*p_csys;	
+	ProGeomitem geom_item;	
 	ProBoolean interact_flag = PRO_B_FALSE;
 	ProModelitem asm_datum, comp_datum;
 	ProSelection asm_sel, comp_sel;
 	ProAsmcomppath comp_path;
 	ProIdTable c_id_table;
+	
+    // parameter name	
+    ProParamvalue new_value;
+    ProParamvalueType new_value_type;
+    ProName p_name, p_value;
+    ProParameter new_param;
+    ProModelitem asmCsysF;
 		
 	FILE *fp;
 	fp=fopen("DrawingRepTabImp.txt","w+");
@@ -2802,21 +2917,52 @@ ProError UserAssembleByDatums (ProAssembly asm_model)
 		ProStringToWstring(asmCsysName[2], "WELD_CSYS_03");
 		
 		ProDemoGeneralCsysCreate();
+
+	    status = ProUtilCollectSolidCsys((ProSolid)asm_model, &p_csys);
+	    fprintf(fp, "ProUtilCollectSolidCsys %d\n", status);
+
+        /* Print out obtained csys */
+        if( status == PRO_TK_NO_ERROR )
+        {
+	        /* Get the array size */
+	        n = 0;
+	        status = ProArraySizeGet( p_csys, &n );
+            
+	        /* Print out the csys array */
+	        fprintf( fp, "Number of solid csys:\t%d\n", n );
+	        for( i=0; i<n; i++ )
+	        {
+	            /* Get the csys name */
+	            status = ProCsysToGeomitem( (ProSolid)asm_model, p_csys[i], &geom_item );
+            
+			    status = ProModelitemNameGet( &geom_item, wname );
+            
+				ProWstringToString(csys_name, wname);
+				ProWstringToString(file_name, wname);
+	        }
+            
+	        status = ProArrayFree((ProArray*)&p_csys);
+	    }	    
+		
+		strcat(csys_name,"_%05d");
+		strcat(file_name,"_%05d%s");
+		
 		for (i = 0; i < 3; i++) {		
+			sprintf(newfile_name, file_name, (i + 1), ".prt.1");							
+			copy_tmplt("C:\\temps\\3d_weld_template_000.prt.1", newfile_name);						
+			sprintf(temp_name, csys_name, (i + 1));
+			
 			// Creation new template files
-	        sprintf(newfile_name, "3d_weld_template_00%d.prt.1", (i + 1));
-	        copy_tmplt("C:\\temps\\3d_weld_template_000.prt.1", newfile_name);
-			sprintf(temp_name, "%s%d", "3d_weld_template_00", (i + 1));		
+	        //sprintf(newfile_name, "3d_weld_template_00%d.prt.1", (i + 1));
+	        //copy_tmplt("C:\\temps\\3d_weld_template_000.prt.1", newfile_name);
+			//sprintf(temp_name, "%s%d", "3d_weld_template_00", (i + 1));		
+			
 		    ProStringToWstring(name, temp_name); 			
 		    status = ProMdlRetrieve(name,PRO_MDL_PART,&comp_model);
 		    
 		    if (status != PRO_TK_NO_ERROR)
 		    	return status;
 		    
-		    //CreateDefCsys();
-		    //ProDemoGeneralCsysCreate();
-		    //return;//check_selection
-		                    
             status = ProModelitemByNameInit(comp_model, PRO_CSYS, L"WELD-CSYS", &compCsys);
             if (status != PRO_TK_NO_ERROR) 
             {
@@ -2829,7 +2975,25 @@ ProError UserAssembleByDatums (ProAssembly asm_model)
             if (status != PRO_TK_NO_ERROR) {
                return PRO_TK_GENERAL_ERROR;
             }
-        
+					
+           // define a feature's value
+		   status = ProModelitemByNameInit(asm_model, PRO_FEATURE, asmCsysName[i], &asmCsysF);
+           			  
+           new_value_type = PRO_PARAM_STRING;
+		   				  
+		   ProStringToWstring(p_name, "END_TYPE");
+		   ProStringToWstring(p_value, "BW2003");	  
+		   
+		   status = ProParamvalueSet( &new_value, p_value, new_value_type );  
+		   
+           status = ProParameterInit(&asmCsysF, L"END_TYPE", &new_param);
+           
+           if (status == PRO_TK_NO_ERROR)
+              ProParameterValueSet(&new_param, &new_value);
+           else   
+               status = ProParameterCreate(&asmCsysF, L"END_TYPE", &new_value, &new_param);           
+           // ----------------------------------------------------------
+		   
            status = ProAsmcomppathInit(asm_model, c_id_table, 0, &comp_path);				
 		
            status = ProSelectionAlloc(&comp_path, &asmCsys, &asmCsysSel);
@@ -4227,14 +4391,6 @@ ProError ProUtilCollect3ParamDBVisitActionR(
     return (ProUtilCollect2ParamDBVisitActionR(p_object, app_data));
 }
 
-
-ProError ProUtilDefaultFilter()
-{
-    /*TEST_CALL_REPORT( p_filter_action_type, "ProUtilDefaultFilter", 
-        PRO_TK_NO_ERROR, 0 );*/
-
-    return (PRO_TK_NO_ERROR);
-}
 /*=========================================================================*\
     Function:	ProUtilCollectSimprepsdataitems()
     Purpose:	Return a list of simplified representations in the solid
