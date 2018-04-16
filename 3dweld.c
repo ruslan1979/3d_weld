@@ -11,7 +11,7 @@ http://www.datajett.com/Cadd/ProE/PTK/TestDrawTbl.c
 #include <ProAnimate.h>
 #include <ProArray.h>
 #include <ProAsmcomp.h>
-#include <ProAsmcompR20.h>
+//#include <ProAsmcompR20.h>
 #include <ProAsmcomppath.h>
 #include <ProAssembly.h>
 #include <ProAutodrill.h>
@@ -90,7 +90,8 @@ http://www.datajett.com/Cadd/ProE/PTK/TestDrawTbl.c
 #include <ProItemerr.h>
 #include <ProJlink.h>
 #include <ProLayer.h>
-#include <ProLayerR19.h>
+#include <ProLayerstate.h>
+//#include <ProLayerR19.h>
 #include <ProMaterial.h>
 #include <ProMdl.h>
 #include <ProMdlChk.h>
@@ -229,8 +230,11 @@ void DrawingRepMapKey();
 void NewDwgSRSF()   ;
 void dimshow()	 ;
 void ShowErr(ProError status);
-
+int copy_tmplt(char *old_filename, char *new_filename);
 ProError UsrFeatFindbyname ( ProSolid solid, char  *name,ProFeattype   type,ProFeature *feat);
+
+ProError ProUtilCollect2ParamDBVisitAction(void *, ProAppData);
+ProError ProUtilCollect3ParamDBVisitAction(void *, ProError ,ProAppData);
 
 int ProUtilMatrixInvert(
     double m[4][4],
@@ -2349,13 +2353,16 @@ ProError ProDemoGeneralCsysCreate()
   ProStringToWstring (csys_name, "ISOGEN");
   status=ProModelitemByNameInit(model,PRO_CSYS,csys_name,&mdl_itm_top);
   fprintf(fpG,"status = ProModelitemByNameInit %d\n", status);
-  status=ProSelectionAlloc(NULL,&mdl_itm_top,&ref_item_csy);
   
+  status=ProSelectionAlloc(NULL,&mdl_itm_top,&ref_item_csy);
+  status=ProSelectionAlloc(NULL,&mdl_itm_top,&csys_sel);
+	
   fprintf(fpG,"status = ProSelectionAlloc %d\n", status);
-  ////ProSelectionSet(csys_sel, NULL, &working_csys_feat);
+  //ProSelectionSet(csys_sel, NULL, &working_csys_feat);
+  
   ProSelectionHighlight(csys_sel,PRO_COLOR_SELECTED); //should be light green   PRO_COLOR_EDGE_HIGHLIGHT);//PRO_COLOR_SELECTED); //should be light green
-  if (csys_sel!=NULL) 
-      fprintf(fpG,"csys_sel!=NULL");
+  if (csys_sel != NULL) 
+      fprintf(fpG,"csys_sel != NULL");
   else
       fprintf(fpG,"csys_sel==NULL");
   fclose(fpG);
@@ -2745,14 +2752,13 @@ ProError ProDemoGeneralCsysCreate()
 			   &model_sel);
   
   opts[0] = PRO_FEAT_CR_DEFINE_MISS_ELEMS;
+  
   status = ProFeatureCreate (model_sel, pro_e_feature_tree, opts, 1,
 			  &feature, &errors);
-  //C_LOG (" ProFeatureCreate"); 
   
   status = ProElementFree (&pro_e_feature_tree ); 
-  //C_LOG (" ProElementFree"); 
   
-  //ProSelectionHighlight(csys_sel,PRO_COLOR_SELECTED); //should be light green   PRO_COLOR_EDGE_HIGHLIGHT);//PRO_COLOR_SELECTED); //should be light green
+  ProSelectionHighlight(csys_sel,PRO_COLOR_SELECTED); //should be light green   PRO_COLOR_EDGE_HIGHLIGHT);//PRO_COLOR_SELECTED); //should be light green
   
   return ( status );
 }
@@ -2793,6 +2799,20 @@ ProError ProUtilCollect2ParamDBVisitAction(
 
     status = ProArrayObjectAdd(p_array, PRO_VALUE_UNUSED, 1, p_object );
     return (status);
+}
+
+/*=========================================================================*\
+    Function:	ProUtilCollect3ParamDBVisitAction()
+    Purpose:	Add any object given by pointer to the Collection
+    Returns:	PRO_TK_NO_ERROR - success;
+\*=========================================================================*/
+ProError ProUtilCollect3ParamDBVisitAction(
+    void	    *p_object,	/* In:	The pointer to the object 
+					being visited */
+    ProError	    status,	/* In:  The status returned by filter func */
+    ProAppData	    app_data)	/* In:	In fact it's ProArray** */
+{
+    return (ProUtilCollect2ParamDBVisitAction(p_object, app_data));
 }
 
 /*=========================================================================*\
@@ -2851,6 +2871,113 @@ ProError ProUtilCollectSolidCsys(
 		status = PRO_TK_BAD_INPUTS;
 
     return (status);
+}
+
+//PRO_FEAT_ROUTE_SPOOL - need to search the filter
+/*=========================================================================*\
+    Function:	ProUtilCollectSolidFeaturesWithFilter()
+    Purpose:	Return a list of features in the solid
+    Returns:	PRO_TK_NO_ERROR - success;
+		PRO_TK_BAD_INPUTS - invalid parameters
+\*=========================================================================*/
+ProError ProUtilCollectSolidFeaturesWithFilter( 
+    ProSolid	    p_solid,	    /* In:  The solid handle */
+    ProFeatureFilterAction     filter,  /* In:  Filter function */
+    ProFeature	    **p_features    /* Out: ProArray with collected features
+					    items. The function allocates 
+					    memory for this argument, but 
+					    you must free it. To free 
+					    the memory, call the function 
+					    ProArrayFree() */
+)
+{
+    ProError	    status;
+
+    if( p_features != NULL )
+    {
+	status = ProArrayAlloc(0,sizeof(ProFeature), 1, (ProArray*)p_features);
+	TEST_CALL_REPORT("ProArrayAlloc()", "ProUtilCollectSolidFeatures()",
+					    status, status != PRO_TK_NO_ERROR);
+	if( status == PRO_TK_NO_ERROR )
+	{
+	    ACTION_TYPE( "ProFeatureVisitAction", "ProFeatureFilterAction" )
+	    status = ProSolidFeatVisit( p_solid, 
+		(ProFeatureVisitAction)ProUtilCollect3ParamDBVisitAction,
+                (ProFeatureFilterAction)filter,
+                (ProAppData)&p_features );
+	    TEST_CALL_REPORT("ProSolidFeatVisit()", 
+		"ProUtilCollectSolidFeatures()", status, 
+		status != PRO_TK_NO_ERROR && status != PRO_TK_E_NOT_FOUND);
+	    if( status != PRO_TK_NO_ERROR )
+	    {
+		ProArrayFree( (ProArray*)p_features );
+		*p_features = NULL;
+	    }
+	}
+    }
+    else
+	status = PRO_TK_BAD_INPUTS;
+
+    return (status);
+}
+
+/*=========================================================================*\
+    Function:	ProUtilCollectSolidFeatures()
+    Purpose:	Return a list of features in the solid
+    Returns:	PRO_TK_NO_ERROR - success;
+		PRO_TK_BAD_INPUTS - invalid parameters
+\*=========================================================================*/
+ProError ProUtilCollectSolidFeatures( 
+    ProSolid	    p_solid,	    /* In:  The solid handle */
+    ProFeature	    **p_features    /* Out: ProArray with collected features
+					    items. The function allocates 
+					    memory for this argument, but 
+					    you must free it. To free 
+					    the memory, call the function 
+					    ProArrayFree() */
+)
+{
+    ProError	    status;
+
+    status =  ProUtilCollectSolidFeaturesWithFilter (p_solid, 
+        (ProFeatureFilterAction)ProUtilDefaultFilter, p_features);
+    return (status);
+}
+
+static struct feature_status_name
+    { char *p_name; /*ProFeatStatus*/int type; } feature_status_name[] = 
+{
+    { (char *)"PRO_FEAT_INVALID",	      PRO_FEAT_INVALID	           },
+    { (char *)"PRO_FEAT_ACTIVE",	      PRO_FEAT_ACTIVE              },
+    { (char *)"PRO_FEAT_INACTIVE",	      PRO_FEAT_INACTIVE            },
+    { (char *)"PRO_FEAT_FAMTAB_SUPPRESSED",   PRO_FEAT_FAMTAB_SUPPRESSED   },
+    { (char *)"PRO_FEAT_SIMP_REP_SUPPRESSED", PRO_FEAT_SIMP_REP_SUPPRESSED },
+    { (char *)"PRO_FEAT_PROG_SUPPRESSED",     PRO_FEAT_PROG_SUPPRESSED     },
+    { (char *)"PRO_FEAT_SUPPRESSED",	      PRO_FEAT_SUPPRESSED          },
+    { (char *)"PRO_FEAT_UNREGENERATED",	      PRO_FEAT_UNREGENERATED       },
+	{ (char *)"PRO_FEAT_ROUTE_SPOOL",	      PRO_FEAT_ROUTE_SPOOL         },
+    { NULL,			      0			           }
+};
+
+
+/*=========================================================================*\
+    File:	TestCollect.c
+    Function:   ProUtilFeatureStatusToString()
+    Purpose:    Return the string with feature status
+    Returns:	Surface type name
+\*=========================================================================*/
+char *ProUtilFeatureStatusToString( 
+    ProFeatStatus feat_status    /* In:  Surface type to convert to string */
+)
+{
+    int		i;
+
+    for( i=0; feature_status_name[i].p_name != NULL; i++ )
+	if( feature_status_name[i].type == feat_status )
+	    return feature_status_name[i].p_name;
+
+
+    return ((char *)"unknown");
 }
 
 /*=====================================================================*\
@@ -2943,13 +3070,45 @@ ProError UserAssembleByDatums (ProAssembly asm_model)
             
 	        status = ProArrayFree((ProArray*)&p_csys);
 	    }	    
+
+		// // ---- features ------
+		ProFeature *p_feat;
+		ProFeattype	feat_type;
+		ProFeatStatus	feat_status;
+		
+		status = ProUtilCollectSolidFeatures((ProSolid)asm_model, &p_feat);
+		fprintf(fp, "ProUtilCollectSolidFeatures %d\n", status);
+        if( status == PRO_TK_NO_ERROR )
+        {
+	        /* Get the array size */
+	        n = 0;
+	        status = ProArraySizeGet( p_feat, &n );
+            
+	        /* Print out the csys array */
+	        fprintf( fp, "Number of features:\t%d\n", n );
+	        for( i=0; i<n; i++ )
+	        {
+				status = ProFeatureTypeGet(p_feat + i, &feat_type);
+				status = ProFeatureStatusGet(p_feat + i, &feat_status);
+				if (feat_type == PRO_FEAT_ROUTE_SPOOL )	
+				  fprintf( fp, "Id %d,\ttype %d,\tstatus: %s\n", 
+	                           p_feat[i].id,
+	                           feat_type,
+	                           ProUtilFeatureStatusToString( feat_status )
+				  	   );	            
+	        }
+            
+	        status = ProArrayFree((ProArray*)&p_feat);
+	    }		
 		
 		strcat(csys_name,"_%05d");
 		strcat(file_name,"_%05d%s");
 		
 		for (i = 0; i < 3; i++) {		
-			sprintf(newfile_name, file_name, (i + 1), ".prt.1");							
-			copy_tmplt("C:\\temps\\3d_weld_template_000.prt.1", newfile_name);						
+			sprintf(newfile_name, file_name, (i + 1), ".prt.1");
+			
+			copy_tmplt("C:\\tmp\\3d_weld_template_000.prt.1", newfile_name);						
+			
 			sprintf(temp_name, csys_name, (i + 1));
 			
 			// Creation new template files
@@ -3021,7 +3180,8 @@ ProError UserAssembleByDatums (ProAssembly asm_model)
 }
 
 // Copies file is taken from https://www.codingunit.com/c-tutorial-copying-a-file-in-c
-int copy_tmplt(char old_filename[100], char new_filename[100]) {
+//int copy_tmplt(char old_filename[100], char new_filename[100]) {
+int copy_tmplt(char *old_filename, char *new_filename) {	
 	FILE  *ptr_old, *ptr_new;
 	errno_t err = 0, err1 = 0;
 	int  a;
